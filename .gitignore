@@ -1,0 +1,25 @@
+# .gitignore for Rust projects
+
+# Ignore target directory
+/target/
+
+# Ignore files created by cargo
+Cargo.lock
+Cargo.toml.orig
+
+# Ignore files created by rustup
+rust-toolchain
+
+# Ignore files created by Rust Language Server
+.rustc_info.json
+
+# Ignore files created by various IDEs and editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*.bak
+*.orig
+*.iml

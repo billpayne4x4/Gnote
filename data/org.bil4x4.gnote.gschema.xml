@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnote">
+	<schema id="org.bil4x4.gnote" path="/org/bil4x4/gnote/">
+	</schema>
+</schemalist>
