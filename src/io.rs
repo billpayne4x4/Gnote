@@ -3,6 +3,7 @@ use std::fs::File as StdFile;
 use std::fmt;
 use std::io::prelude::*;
 use base64::{Engine, engine::general_purpose};
+use super::log_test;
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct NoteFileItem {
@@ -114,7 +115,7 @@ impl NoteFile {
         let mut file = StdFile::open(path).map_err(|e| format!("Failed to open file {}: {}", path, e))?;
         let mut deserialized_data = String::new();
         file.read_to_string(&mut deserialized_data).map_err(|e| format!("Failed to read file {}: {}", path, e))?;
-        println!("=====================================\nLoading File contents {}:\n{}",path, deserialized_data);
+        log_test!("=====================================\nLoading File contents {}:\n{}",path, deserialized_data);
 
         // Deserialize JSON data
         let file_data: NoteFile = serde_json::from_str(&deserialized_data)
@@ -127,7 +128,7 @@ impl NoteFile {
         // Serialize NoteFile to JSON
         let serialized_data = serde_json::to_string_pretty(&self)
             .map_err(|e| format!("Failed to serialize NoteFile: {}", e))?;
-        println!("=====================================\nSaving File contents {}:\n{}",path, serialized_data);
+        log_test!("=====================================\nSaving File contents {}:\n{}",path, serialized_data);
 
         // Write JSON data to file
         let mut file = StdFile::create(path)
@@ -221,19 +222,19 @@ mod tests {
     #[test]
     fn test_io() {
         let note_file_save = test_data();
-        println!("=====================================\nSave Test Data:\n{}", note_file_save);
+        log_test!("=====================================\nSave Test Data:\n{}", note_file_save);
 
         let mut temp_file = tempfile::NamedTempFile::new().expect("Failed to create temporary file");
         note_file_save.save(temp_file.path().to_str().unwrap()).unwrap_or_else(|e| {
-            println!("Error: {}", e);
+            log_test!("Error: {}", e);
             panic!("Failed to save JSON data: {}", e)
         });
 
         let note_file_load = NoteFile::load(temp_file.path().to_str().unwrap()).unwrap_or_else(|e| {
-            println!("Error: {}", e);
+            log_test!("Error: {}", e);
             panic!("Failed to load JSON data: {}", e)
         });
-        println!("=====================================\nLoad Test Data:\n{}", note_file_load);
+        log_test!("=====================================\nLoad Test Data:\n{}", note_file_load);
 
         assert_note_file_equal(&note_file_save, &note_file_load);
     }
