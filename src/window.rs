@@ -21,7 +21,7 @@
 use gtk::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
-//use super::tree_store::TreeStoreManager;
+use super::tree_manager::TreeManager;
 
 mod imp {
     use super::*;
@@ -74,10 +74,27 @@ impl GnoteWindow {
         let window: GnoteWindow = glib::Object::new(&[("application", application)]);
 
         window.note_buffer().set_text("Hello World");
-        window.tree_store().insert_with_values(None, None, &[(0, &&"name1"), (1, &&"folder1"), (2, &&"Data1")]);
-        window.tree_store().insert_with_values(None, None, &[(0, &&"name2"), (1, &&"folder2"), (2, &&"Data2")]);
-        window.tree_store().insert_with_values(None, None, &[(0, &&"name3"), (1, &&"folder3"), (2, &&"Data3")]);
 
+        let store = window.tree_store();
+        TreeManager::init(&store);
+        println!("1111");
+        let iter1 = TreeManager::add_folder(&store, "My Notes", None);
+        println!("2222");
+        let iter2 = TreeManager::add_folder(&store, "My Folder", Some(&iter1));
+        println!("3333");
+        let iter3 = TreeManager::add_note(&store, "My Note", Some(&iter2));
+        println!("4444");
+        //TreeManager::remove_folder(&store, &iter2);
+        TreeManager::remove_note(&store, &iter3);
+        println!("5555");
+
+        /*window.tree_store().insert_with_values(None, None, &[(0, &"name1"), (1, &"folder1"), (2, &false)]);
+        window.tree_store().insert_with_values(None, None, &[(0, &"name2"), (1, &"folder2"), (2, &false)]);
+
+        let iter = Some(window.tree_store().insert_with_values(None, None, &[(0, &"name3"), (1, &"folder3"), (2, &true)]));
+
+        window.tree_store().insert_with_values(iter.as_ref(), None, &[(0, &""), (1, &"folder3.1"), (2, &false)]);
+        window.tree_store().insert_with_values(iter.as_ref(), None, &[(0, &"name3.1"), (1, &"folder3.1"), (2, &false)]);*/
         //TreeStoreManager::add_folder(&window.tree_store(), "test1");
         //window.tree_view().queue_draw();
         //window.tree_view().expand_all();

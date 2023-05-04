@@ -110,7 +110,7 @@
     <columns>
       <column type="gchararray"/>
       <column type="gchararray"/>
-      <column type="gchararray"/>
+      <column type="gboolean"/>
     </columns>
   </object>
 </interface>

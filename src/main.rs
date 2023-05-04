@@ -22,7 +22,7 @@ mod application;
 mod logging;
 mod config;
 mod window;
-mod tree_store;
+mod tree_manager;
 mod io;
 
 use self::application::GnoteApplication;
