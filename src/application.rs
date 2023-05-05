@@ -18,8 +18,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use gtk::prelude::*;
 use adw::subclass::prelude::*;
+use gtk::prelude::*;
 use gtk::{gio, glib};
 
 use crate::config::VERSION;
@@ -89,7 +89,8 @@ impl GnoteApplication {
         let about_action = gio::ActionEntry::builder("about")
             .activate(move |app: &Self, _, _| app.show_about())
             .build();
-        self.add_action_entries([quit_action, about_action]).unwrap();
+        self.add_action_entries([quit_action, about_action])
+            .unwrap();
     }
 
     fn show_about(&self) {

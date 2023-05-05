@@ -1,22 +1,20 @@
-use serde::Deserialize;
-use std::fs::File as StdFile;
-use std::fmt;
-use std::io::prelude::*;
-use base64::{Engine, engine::general_purpose};
 use super::log_test;
+use base64::{engine::general_purpose, Engine};
+use serde::Deserialize;
+use std::{fmt, fs, fs::File as StdFile, io::prelude::*, path::PathBuf};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct NoteFileItem {
-    title: String,
+pub struct NoteFileItem {
+    pub(crate) title: String,
     #[serde(deserialize_with = "from_base64", serialize_with = "to_base64")]
-    body: Option<String>,
-    children: Option<Vec<NoteFileItem>>,
-    is_folder: bool,
+    pub body: Option<String>,
+    pub children: Option<Vec<NoteFileItem>>,
+    pub is_folder: bool,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
-struct NoteFile {
-    children: Option<Vec<NoteFileItem>>,
+pub struct NoteFile {
+    pub children: Option<Vec<NoteFileItem>>,
 }
 
 fn from_base64<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -29,9 +27,12 @@ where
             if base64_str.is_empty() {
                 Ok(None)
             } else {
-                general_purpose::STANDARD_NO_PAD.decode(&base64_str)
+                general_purpose::STANDARD_NO_PAD
+                    .decode(&base64_str)
                     .map_err(serde::de::Error::custom)
-                    .and_then(|decoded| String::from_utf8(decoded).map_err(serde::de::Error::custom))
+                    .and_then(|decoded| {
+                        String::from_utf8(decoded).map_err(serde::de::Error::custom)
+                    })
                     .map(Some)
             }
         }
@@ -108,14 +109,19 @@ impl PartialEq for NoteFile {
     }
 }
 
-
 impl NoteFile {
     pub fn load(path: &str) -> Result<NoteFile, Box<dyn std::error::Error>> {
         // Read JSON file
-        let mut file = StdFile::open(path).map_err(|e| format!("Failed to open file {}: {}", path, e))?;
+        let mut file =
+            StdFile::open(path).map_err(|e| format!("Failed to open file {}: {}", path, e))?;
         let mut deserialized_data = String::new();
-        file.read_to_string(&mut deserialized_data).map_err(|e| format!("Failed to read file {}: {}", path, e))?;
-        log_test!("=====================================\nLoading File contents {}:\n{}",path, deserialized_data);
+        file.read_to_string(&mut deserialized_data)
+            .map_err(|e| format!("Failed to read file {}: {}", path, e))?;
+        log_test!(
+            "=====================================\nLoading File contents {}:\n{}",
+            path,
+            deserialized_data
+        );
 
         // Deserialize JSON data
         let file_data: NoteFile = serde_json::from_str(&deserialized_data)
@@ -128,73 +134,67 @@ impl NoteFile {
         // Serialize NoteFile to JSON
         let serialized_data = serde_json::to_string_pretty(&self)
             .map_err(|e| format!("Failed to serialize NoteFile: {}", e))?;
-        log_test!("=====================================\nSaving File contents {}:\n{}",path, serialized_data);
+        log_test!(
+            "=====================================\nSaving File contents {}:\n{}",
+            path,
+            serialized_data
+        );
 
         // Write JSON data to file
-        let mut file = StdFile::create(path)
-            .map_err(|e| format!("Failed to create file {}: {}", path, e))?;
+        let mut file =
+            StdFile::create(path).map_err(|e| format!("Failed to create file {}: {}", path, e))?;
         file.write_all(serialized_data.as_bytes())
             .map_err(|e| format!("Failed to write data to file {}: {}", path, e).into())
     }
 }
 
+fn ensure_gnote_directory() -> PathBuf {
+    let mut gnote_path = dirs::home_dir().expect("Couldn't get user's home directory");
+    gnote_path.push(".gnote");
+
+    if !gnote_path.exists() {
+        fs::create_dir(&gnote_path).expect("Couldn't create .gnote directory");
+    }
+
+    gnote_path
+}
+
+pub fn get_settings_path() -> String {
+    let mut settings_path = ensure_gnote_directory();
+
+    #[cfg(test)]
+    {
+        settings_path.push("settings_test.json");
+    }
+    #[cfg(not(test))]
+    {
+        settings_path.push("settings.json");
+    }
+
+    settings_path.to_str().unwrap().to_owned()
+}
+
+pub fn get_notes_path() -> String {
+    let mut notes_path = ensure_gnote_directory();
+
+    #[cfg(test)]
+    {
+        notes_path.push("notes_test.json");
+    }
+    #[cfg(not(test))]
+    {
+        notes_path.push("notes.json");
+    }
+
+    notes_path.to_str().unwrap().to_owned()
+}
+
 // ############################ UNIT TESTS ############################
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
-
-    fn test_data() -> NoteFile {
-        let note_file = NoteFile {
-            children: Some(vec![NoteFileItem {
-                title: String::from("TITLE: Folder 1 (Root)"),
-                body: Some(String::from("BODY: notes 0.1 (Root)")),
-                children: Some(vec![
-                    NoteFileItem {
-                        title: String::from("TITLE: Note 1"),
-                        body: Some(String::from("BODY: note 1.1")),
-                        children: None,
-                        is_folder: false,
-                    },
-                    NoteFileItem {
-                        title: String::from("TITLE: Folder 2"),
-                        body: None,
-                        children: Some(vec![
-                            NoteFileItem {
-                                title: String::from("TITLE: Note 2"),
-                                body: Some(String::from("BODY: note 2.2")),
-                                children: None,
-                                is_folder: false,
-                            },
-                            NoteFileItem {
-                                title: String::from("TITLE: Folder 3"),
-                                body: None,
-                                children: Some(vec![
-                                    NoteFileItem {
-                                        title: String::from("TITLE: Note 3"),
-                                        body: Some(String::from("BODY: note 3.3")),
-                                        children: None,
-                                        is_folder: false,
-                                    },
-                                    NoteFileItem {
-                                        title: String::from("TITLE: Note 4"),
-                                        body: Some(String::from("BODY: note 3.4")),
-                                        children: None,
-                                        is_folder: false,
-                                    },
-                                ]),
-                                is_folder: true,
-                            },
-                        ]),
-                        is_folder: true,
-                    },
-                ]),
-                is_folder: true,
-            }]),
-        };
-
-        note_file
-    }
+    use crate::test_data;
 
     fn assert_note_file_equal(n1: &NoteFile, n2: &NoteFile) {
         assert_eq!(n1.children.is_some(), n2.children.is_some());
@@ -220,23 +220,34 @@ mod tests {
     }
 
     #[test]
-    fn test_io() {
-        let note_file_save = test_data();
-        log_test!("=====================================\nSave Test Data:\n{}", note_file_save);
+    fn test_save_and_load_io() {
+        let note_file_save = test_data::get();
+        log_test!(
+            "=====================================\nSave Test Data:\n{}",
+            note_file_save
+        );
 
-        let mut temp_file = tempfile::NamedTempFile::new().expect("Failed to create temporary file");
-        note_file_save.save(temp_file.path().to_str().unwrap()).unwrap_or_else(|e| {
-            log_test!("Error: {}", e);
-            panic!("Failed to save JSON data: {}", e)
-        });
+        let mut temp_file =
+            tempfile::NamedTempFile::new().expect("Failed to create temporary file");
+        note_file_save
+            .save(temp_file.path().to_str().unwrap())
+            .unwrap_or_else(|e| {
+                log_test!("Error: {}", e);
+                panic!("Failed to save JSON data: {}", e)
+            });
 
-        let note_file_load = NoteFile::load(temp_file.path().to_str().unwrap()).unwrap_or_else(|e| {
-            log_test!("Error: {}", e);
-            panic!("Failed to load JSON data: {}", e)
-        });
-        log_test!("=====================================\nLoad Test Data:\n{}", note_file_load);
+        let note_file_load = match NoteFile::load(temp_file.path().to_str().unwrap()) {
+            Ok(note_file_load) => note_file_load,
+            Err(e) => {
+                log_test!("Error: {}", e);
+                return;
+            }
+        };
+        log_test!(
+            "=====================================\nLoad Test Data:\n{}",
+            note_file_load
+        );
 
         assert_note_file_equal(&note_file_save, &note_file_load);
     }
 }
-

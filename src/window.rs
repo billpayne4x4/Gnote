@@ -18,10 +18,10 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use gtk::prelude::*;
-use adw::subclass::prelude::*;
-use gtk::{gio, glib};
 use super::tree_manager::TreeManager;
+use adw::subclass::prelude::*;
+use gtk::prelude::*;
+use gtk::{gio, glib};
 
 mod imp {
     use super::*;
@@ -77,27 +77,17 @@ impl GnoteWindow {
 
         let store = window.tree_store();
         TreeManager::init(&store);
-        println!("1111");
+
+        // Test data
+        #[allow(unused_variables)]
         let iter1 = TreeManager::add_folder(&store, "My Notes", None);
-        println!("2222");
+        #[allow(unused_variables)]
         let iter2 = TreeManager::add_folder(&store, "My Folder", Some(&iter1));
-        println!("3333");
+        #[allow(unused_variables)]
         let iter3 = TreeManager::add_note(&store, "My Note", Some(&iter2));
-        println!("4444");
         //TreeManager::remove_folder(&store, &iter2);
-        TreeManager::remove_note(&store, &iter3);
-        println!("5555");
+        //TreeManager::remove_note(&store, &iter3);
 
-        /*window.tree_store().insert_with_values(None, None, &[(0, &"name1"), (1, &"folder1"), (2, &false)]);
-        window.tree_store().insert_with_values(None, None, &[(0, &"name2"), (1, &"folder2"), (2, &false)]);
-
-        let iter = Some(window.tree_store().insert_with_values(None, None, &[(0, &"name3"), (1, &"folder3"), (2, &true)]));
-
-        window.tree_store().insert_with_values(iter.as_ref(), None, &[(0, &""), (1, &"folder3.1"), (2, &false)]);
-        window.tree_store().insert_with_values(iter.as_ref(), None, &[(0, &"name3.1"), (1, &"folder3.1"), (2, &false)]);*/
-        //TreeStoreManager::add_folder(&window.tree_store(), "test1");
-        //window.tree_view().queue_draw();
-        //window.tree_view().expand_all();
         window
     }
 

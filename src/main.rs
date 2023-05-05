@@ -19,11 +19,12 @@
  */
 
 mod application;
-mod logging;
 mod config;
-mod window;
-mod tree_manager;
 mod io;
+mod logging;
+mod test_data;
+mod tree_manager;
+mod window;
 
 use self::application::GnoteApplication;
 use self::window::GnoteWindow;

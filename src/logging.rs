@@ -31,6 +31,7 @@ macro_rules! log_error {
     };
 }
 
+#[allow(dead_code)]
 pub fn log(log_level: &str, args: Arguments<'_>) {
     println!("{}: {}", log_level, args);
 }
