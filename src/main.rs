@@ -25,6 +25,7 @@ mod logging;
 mod test_data;
 mod tree_manager;
 mod window;
+mod ui_tools;
 
 use self::application::GnoteApplication;
 use self::window::GnoteWindow;

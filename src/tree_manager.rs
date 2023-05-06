@@ -3,13 +3,83 @@ use super::{
     io::{NoteFile, NoteFileItem},
 };
 use crate::log_error;
-use gtk::prelude::{TreeModelExt, TreeModelExtManual, TreeModelFilterExt};
+use gtk::{
+    self,
+    gdk::{self, BUTTON_SECONDARY, EventType::ButtonPress},
+    gio::{Menu, MenuItem, SimpleAction},
+    Orientation,
+    prelude::*,
+    PositionType,
+    TreeIter, TreeStore, TreeView, EventControllerLegacy,
+    Button, Inhibit, PopoverMenu, TreeModelFilter,
+    GestureClick,
+};
+use gtk::gdk::Rectangle;
 
 pub struct TreeManager;
 
 impl TreeManager {
-    pub fn init(store: &gtk::TreeStore) {
-        let filter_model = gtk::TreeModelFilter::new(store, None);
+    pub fn init(tree: &TreeView, store: &TreeStore) {
+        let gesture = GestureClick::new();
+        gesture.set_button(BUTTON_SECONDARY);
+        let tree_clone = tree.clone();
+
+        tree_clone.parent();
+
+        //let root = tree_clone. .get_root().unwrap().downcast::<ApplicationWindow>().unwrap();
+        SimpleAction::new("tree.add_note", None)
+            .connect_activate(move |_, _| {
+                println!("Add Note");
+            });
+
+        gesture.connect_released(move |gesture, n_press, x, y| {
+            if let Some((model, iter)) = tree_clone.selection().selected() {
+                let store = match model.downcast::<TreeStore>() {
+                    Ok(store) => store,
+                    Err(_) => {
+                        log_error!("Failed to downcast TreeModel to TreeStore");
+                        return;
+                    },
+                };
+
+                let is_title_empty: bool = store.get_value(&iter, 0).get::<String>().unwrap().is_empty();
+                let is_folder: bool = store.get_value(&iter, 2).get().unwrap();
+                let parent: Option<TreeIter> = store.iter_parent(&iter);
+
+                if parent.is_some() {
+                    let menu = Menu::new();
+                    let delete_section = Menu::new();
+                    let popup_menu = PopoverMenu::from_model(Some(&menu));
+                    if is_folder || is_title_empty {
+                        let add_section = Menu::new();
+                        add_section.append(Some("Add Note"), Some("tree.add_note"));
+                        add_section.append(Some("Add Folder"), Some("tree.add_folder"));
+                        menu.append_section(None, &add_section);
+                        delete_section.append(Some("Delete Folder"), Some("tree.delete_folder"));
+                        popup_menu.set_size_request(0, 125);
+                    } else {
+                        delete_section.append(Some("Delete Note"), Some("tree.delete_note"));
+                    }
+                    menu.append_section(None, &delete_section);
+
+                    popup_menu.set_parent(&tree_clone);
+                    popup_menu.set_has_arrow(false);
+                    popup_menu.set_position(PositionType::Right);
+                    popup_menu.set_pointing_to(Some(&Rectangle::new(x as i32, y as i32, 0, 0)));
+                    popup_menu.popup();
+                }
+
+                println!("title: {:?}", store.get_value(&iter, 0).get::<String>().unwrap());
+            }
+
+            println!("gesture: {:?}", gesture);
+            println!("n_press: {:?}", n_press);
+            println!("x: {:?}", x);
+            println!("y: {:?}", y);
+        });
+        tree.add_controller(&gesture);
+
+        let filter_model = TreeModelFilter::new(store, None);
         filter_model.set_visible_func(move |model, iter| {
             let title = model
                 .get_value(iter, 0)
@@ -23,16 +93,18 @@ impl TreeManager {
     }
 
     pub fn add_folder(
-        store: &gtk::TreeStore,
+        store: &TreeStore,
         name: &str,
-        parent: Option<&gtk::TreeIter>,
-    ) -> gtk::TreeIter {
+        parent: Option<&TreeIter>,
+    ) -> TreeIter {
         if let Some(p) = parent {
             let child_count = store.iter_n_children(Some(p));
 
             if child_count == 1 {
                 let child_iter = store.iter_nth_child(Some(p), 0).unwrap();
-                store.remove(&child_iter);
+                if store.get_value(&child_iter, 0).get::<String>().unwrap().as_str() == "" {
+                    store.remove(&child_iter);
+                }
             }
         }
 
@@ -42,7 +114,7 @@ impl TreeManager {
         iter
     }
 
-    pub fn remove_folder(store: &gtk::TreeStore, iter: &gtk::TreeIter) {
+    pub fn remove_folder(store: &TreeStore, iter: &TreeIter) {
         let parent_iter = store.iter_parent(iter);
 
         // Remove the folder
@@ -59,16 +131,18 @@ impl TreeManager {
     }
 
     pub fn add_note(
-        store: &gtk::TreeStore,
+        store: &TreeStore,
         name: &str,
-        parent: Option<&gtk::TreeIter>,
-    ) -> gtk::TreeIter {
+        parent: Option<&TreeIter>,
+    ) -> TreeIter {
         if let Some(p) = parent {
             let child_count = store.iter_n_children(Some(p));
 
             if child_count == 1 {
                 let child_iter = store.iter_nth_child(Some(p), 0).unwrap();
-                store.remove(&child_iter);
+                if store.get_value(&child_iter, 0).get::<String>().unwrap().as_str() == "" {
+                    store.remove(&child_iter);
+                }
             }
         }
 
@@ -77,7 +151,7 @@ impl TreeManager {
         iter
     }
 
-    pub fn remove_note(store: &gtk::TreeStore, iter: &gtk::TreeIter) {
+    pub fn remove_note(store: &TreeStore, iter: &TreeIter) {
         let parent_iter = store.iter_parent(iter);
 
         // Remove the note
@@ -93,9 +167,9 @@ impl TreeManager {
         }
     }
 
-    pub fn save(store: &gtk::TreeStore) {
+    pub fn save(store: &TreeStore) {
         println!("Saving...");
-        fn build_note_file_item(store: &gtk::TreeStore, iter: &gtk::TreeIter) -> NoteFileItem {
+        fn build_note_file_item(store: &TreeStore, iter: &TreeIter) -> NoteFileItem {
             let title = store
                 .get_value(iter, 0)
                 .get::<String>()
@@ -149,7 +223,7 @@ impl TreeManager {
         });
     }
 
-    pub fn load(store: &gtk::TreeStore) {
+    pub fn load(store: &TreeStore) {
         store.clear();
 
         let note_file = match NoteFile::load(&io::get_notes_path()) {
@@ -161,9 +235,9 @@ impl TreeManager {
         };
 
         fn insert_note_file_item(
-            store: &gtk::TreeStore,
+            store: &TreeStore,
             item: &NoteFileItem,
-            parent: Option<&gtk::TreeIter>,
+            parent: Option<&TreeIter>,
         ) {
             let iter = store.insert_with_values(
                 parent,
@@ -197,17 +271,17 @@ mod tests {
     use crate::test_data;
     use gtk::glib::StaticType;
 
-    fn create_tree_store(note_file: &NoteFile) -> gtk::TreeStore {
-        let store = gtk::TreeStore::new(&[
+    fn create_tree_store(note_file: &NoteFile) -> TreeStore {
+        let store = TreeStore::new(&[
             String::static_type(),
             String::static_type(),
             bool::static_type(),
         ]);
 
         fn insert_note_file_item(
-            store: &gtk::TreeStore,
+            store: &TreeStore,
             item: &NoteFileItem,
-            parent: Option<&gtk::TreeIter>,
+            parent: Option<&TreeIter>,
         ) {
             let iter = store.insert_with_values(
                 parent,
@@ -236,10 +310,10 @@ mod tests {
     }
 
     fn iter_equal(
-        a: &gtk::TreeStore,
-        a_iter: &gtk::TreeIter,
-        b: &gtk::TreeStore,
-        b_iter: &gtk::TreeIter,
+        a: &TreeStore,
+        a_iter: &TreeIter,
+        b: &TreeStore,
+        b_iter: &TreeIter,
     ) -> bool {
         let a_title: String = a.get_value(&a_iter, 0).get().unwrap();
         let a_body: String = a.get_value(&a_iter, 1).get().unwrap();
@@ -278,7 +352,7 @@ mod tests {
         true
     }
 
-    fn tree_store_equal(a: &gtk::TreeStore, b: &gtk::TreeStore) -> bool {
+    fn tree_store_equal(a: &TreeStore, b: &TreeStore) -> bool {
         let mut a_iter = a.iter_first().unwrap();
         let mut b_iter = b.iter_first().unwrap();
 

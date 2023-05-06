@@ -75,18 +75,21 @@ impl GnoteWindow {
 
         window.note_buffer().set_text("Hello World");
 
+        let tree = window.tree_view();
         let store = window.tree_store();
-        TreeManager::init(&store);
+        TreeManager::init(&tree, &store);
 
         // Test data
         #[allow(unused_variables)]
         let iter1 = TreeManager::add_folder(&store, "My Notes", None);
         #[allow(unused_variables)]
-        let iter2 = TreeManager::add_folder(&store, "My Folder", Some(&iter1));
+        let iter2 = TreeManager::add_folder(&store, "My Folder 11", Some(&iter1));
         #[allow(unused_variables)]
-        let iter3 = TreeManager::add_note(&store, "My Note", Some(&iter2));
+        let iter3 = TreeManager::add_folder(&store, "My Folder 22", Some(&iter1));
+        #[allow(unused_variables)]
+        let iter4 = TreeManager::add_note(&store, "My Note", Some(&iter2));
         //TreeManager::remove_folder(&store, &iter2);
-        //TreeManager::remove_note(&store, &iter3);
+        //TreeManager::remove_note(&store, &iter4);
 
         window
     }
