@@ -22,6 +22,7 @@ use super::tree_manager::TreeManager;
 use adw::subclass::prelude::*;
 use gtk::prelude::*;
 use gtk::{gio, glib};
+use std::cell::{Ref, RefCell, RefMut};
 
 mod imp {
     use super::*;
@@ -40,6 +41,14 @@ mod imp {
         pub note: TemplateChild<gtk::TextView>,
         #[template_child]
         pub note_buffer: TemplateChild<gtk::TextBuffer>,
+        #[template_child]
+        pub add_note: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub add_folder: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub remove_item: TemplateChild<gtk::Button>,
+
+        pub tree_manager: RefCell<TreeManager>,
     }
 
     #[glib::object_subclass]
@@ -57,7 +66,14 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for GnoteWindow {}
+    impl ObjectImpl for GnoteWindow {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let tree_manager = TreeManager::new(&self.tree_view, &self.tree_store, &self.add_note, &self.add_folder, &self.remove_item);
+            self.tree_manager.replace(tree_manager);
+        }
+    }
     impl WidgetImpl for GnoteWindow {}
     impl WindowImpl for GnoteWindow {}
     impl ApplicationWindowImpl for GnoteWindow {}
@@ -71,26 +87,44 @@ glib::wrapper! {
 
 impl GnoteWindow {
     pub fn new<P: glib::IsA<gtk::Application>>(application: &P) -> Self {
-        let window: GnoteWindow = glib::Object::new(&[("application", application)]);
+        let mut window: GnoteWindow = glib::Object::new(&[("application", application)]);
 
         window.note_buffer().set_text("Hello World");
 
-        let tree = window.tree_view();
-        let store = window.tree_store();
-        TreeManager::init(&tree, &store);
+        {
+            let tree = window.tree_view();
+            let store = window.tree_store();
 
-        // Test data
-        #[allow(unused_variables)]
-        let iter1 = TreeManager::add_folder(&store, "My Notes", None);
-        #[allow(unused_variables)]
-        let iter2 = TreeManager::add_folder(&store, "My Folder 11", Some(&iter1));
-        #[allow(unused_variables)]
-        let iter3 = TreeManager::add_folder(&store, "My Folder 22", Some(&iter1));
-        #[allow(unused_variables)]
-        let iter4 = TreeManager::add_note(&store, "My Note", Some(&iter2));
-        //TreeManager::remove_folder(&store, &iter2);
-        //TreeManager::remove_note(&store, &iter4);
-
+            let mut iter1: gtk::TreeIter;
+            let mut iter2: gtk::TreeIter;
+            {
+                window.tree_manager().init(application.as_ref());
+            }
+            {
+                iter1 = window.tree_manager().add_folder("My Notes");
+            }
+            {
+                window.tree_manager_mut().set_selected_iter(Some(iter1));
+            }
+            {
+                iter2 = window.tree_manager().add_folder("My Folder 1");
+            }
+            {
+                window.tree_manager_mut().set_selected_iter(Some(iter2));
+            }
+            {
+                let tree_manager = window.tree_manager();
+                tree_manager.add_folder("My Folder 2");
+                tree_manager.add_note("My Note");
+            }
+            // Test data
+            /*tree_manager.set_selected_iter(Some(tree_manager.add_folder("My Notes")));
+            tree_manager.add_folder("My Folder 11");
+            tree_manager.set_selected_iter(Some(tree_manager.add_folder("My Folder 22")));
+            tree_manager.add_note("My Note");*/
+            //TreeManager::remove_folder(&store, &iter2);
+            //TreeManager::remove_note(&store, &iter4);
+        }
         window
     }
 
@@ -112,5 +146,32 @@ impl GnoteWindow {
     pub fn title(&self) -> gtk::Entry {
         let self_ = imp::GnoteWindow::from_instance(self);
         self_.title.clone()
+    }
+
+    pub fn add_note(&self) -> gtk::Button {
+        let self_ = imp::GnoteWindow::from_instance(self);
+        self_.add_note.clone()
+    }
+
+    pub fn add_folder(&self) -> gtk::Button {
+        let self_ = imp::GnoteWindow::from_instance(self);
+        self_.add_folder.clone()
+    }
+
+    pub fn remove_item(&self) -> gtk::Button {
+        let self_ = imp::GnoteWindow::from_instance(self);
+        self_.remove_item.clone()
+    }
+
+    pub fn tree_manager(&self) -> Ref<TreeManager> {
+        println!("tree_manager");
+        let self_ = imp::GnoteWindow::from_instance(self);
+        self_.tree_manager.borrow()
+    }
+
+    pub fn tree_manager_mut(&mut self) -> RefMut<TreeManager> {
+        println!("tree_manager");
+        let mut self_ = imp::GnoteWindow::from_instance(self);
+        self_.tree_manager.borrow_mut()
     }
 }

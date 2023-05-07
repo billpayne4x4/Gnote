@@ -1,39 +1,80 @@
+use adw::gdk::BUTTON_PRIMARY;
 use super::{
     io,
     io::{NoteFile, NoteFileItem},
 };
 use crate::log_error;
-use gtk::{
-    self,
-    gdk::{self, BUTTON_SECONDARY, EventType::ButtonPress},
-    gio::{Menu, MenuItem, SimpleAction},
-    Orientation,
-    prelude::*,
-    PositionType,
-    TreeIter, TreeStore, TreeView, EventControllerLegacy,
-    Button, Inhibit, PopoverMenu, TreeModelFilter,
-    GestureClick,
-};
+use gtk::{self, gdk::{self, BUTTON_SECONDARY, EventType::ButtonPress}, gio::{Menu, MenuItem, SimpleAction}, Orientation, prelude::*, PositionType, TreeIter, TreeStore, TreeView, EventControllerLegacy, Button, Inhibit, PopoverMenu, TreeModelFilter, GestureClick, Application};
 use gtk::gdk::Rectangle;
+use std::sync::{Arc, Mutex};
 
-pub struct TreeManager;
+#[derive(Debug)]
+pub struct TreeManager {
+    tree_view: Option<TreeView>,
+    tree_store: Option<TreeStore>,
+    add_note: Option<Button>,
+    add_folder: Option<Button>,
+    remove_item: Option<Button>,
+    selected_iter: Option<TreeIter>,
+}
+
+impl Default for TreeManager {
+    fn default() -> Self {
+        TreeManager {
+            tree_view: None,
+            tree_store: None,
+            add_note: None,
+            add_folder: None,
+            remove_item: None,
+            selected_iter: None,
+        }
+    }
+}
+
+impl Default for &TreeManager {
+    fn default() -> Self {
+        &TreeManager {
+            tree_view: None,
+            tree_store: None,
+            add_note: None,
+            add_folder: None,
+            remove_item: None,
+            selected_iter: None,
+        }
+    }
+}
+
+impl Clone for TreeManager {
+    fn clone(&self) -> Self {
+        Self {
+            tree_view: self.tree_view.clone(),
+            tree_store: self.tree_store.clone(),
+            add_note: self.add_note.clone(),
+            add_folder: self.add_folder.clone(),
+            remove_item: self.remove_item.clone(),
+            selected_iter: self.selected_iter.clone(),
+        }
+    }
+}
+
 
 impl TreeManager {
-    pub fn init(tree: &TreeView, store: &TreeStore) {
-        let gesture = GestureClick::new();
-        gesture.set_button(BUTTON_SECONDARY);
-        let tree_clone = tree.clone();
+    pub fn new(tree_view: &TreeView, tree_store: &TreeStore, add_note: &Button, add_folder: &Button, remove_item: &Button) -> Self {
+        Self {
+            tree_view: Some(tree_view.clone()),
+            tree_store: Some(tree_store.clone()),
+            add_note: Some(add_note.clone()),
+            add_folder: Some(add_folder.clone()),
+            remove_item: Some(remove_item.clone()),
+            selected_iter: None,
+        }
+    }
 
-        tree_clone.parent();
+    pub fn init(&self, application: &Application) {
+         let self_clone = self.clone();
 
-        //let root = tree_clone. .get_root().unwrap().downcast::<ApplicationWindow>().unwrap();
-        SimpleAction::new("tree.add_note", None)
-            .connect_activate(move |_, _| {
-                println!("Add Note");
-            });
-
-        gesture.connect_released(move |gesture, n_press, x, y| {
-            if let Some((model, iter)) = tree_clone.selection().selected() {
+        self.tree_view.as_ref().unwrap().connect_row_activated(move |tree_view, path, column| {
+            if let Some((model, iter)) = tree_view.selection().selected() {
                 let store = match model.downcast::<TreeStore>() {
                     Ok(store) => store,
                     Err(_) => {
@@ -42,44 +83,30 @@ impl TreeManager {
                     },
                 };
 
-                let is_title_empty: bool = store.get_value(&iter, 0).get::<String>().unwrap().is_empty();
-                let is_folder: bool = store.get_value(&iter, 2).get().unwrap();
-                let parent: Option<TreeIter> = store.iter_parent(&iter);
+                let is_title_empty: bool = self_clone.tree_store.as_ref().unwrap().get_value(&iter, 0).get::<String>().unwrap().is_empty();
+                let is_folder: bool = self_clone.tree_store.as_ref().unwrap().get_value(&iter, 2).get().unwrap();
+                let parent: Option<TreeIter> = self_clone.tree_store.as_ref().unwrap().iter_parent(&iter);
 
                 if parent.is_some() {
-                    let menu = Menu::new();
-                    let delete_section = Menu::new();
-                    let popup_menu = PopoverMenu::from_model(Some(&menu));
-                    if is_folder || is_title_empty {
-                        let add_section = Menu::new();
-                        add_section.append(Some("Add Note"), Some("tree.add_note"));
-                        add_section.append(Some("Add Folder"), Some("tree.add_folder"));
-                        menu.append_section(None, &add_section);
-                        delete_section.append(Some("Delete Folder"), Some("tree.delete_folder"));
-                        popup_menu.set_size_request(0, 125);
-                    } else {
-                        delete_section.append(Some("Delete Note"), Some("tree.delete_note"));
-                    }
-                    menu.append_section(None, &delete_section);
-
-                    popup_menu.set_parent(&tree_clone);
-                    popup_menu.set_has_arrow(false);
-                    popup_menu.set_position(PositionType::Right);
-                    popup_menu.set_pointing_to(Some(&Rectangle::new(x as i32, y as i32, 0, 0)));
-                    popup_menu.popup();
+                    self_clone.remove_item.as_ref().unwrap().set_visible(true);
+                } else {
+                    self_clone.remove_item.as_ref().unwrap().set_visible(false);
                 }
 
-                println!("title: {:?}", store.get_value(&iter, 0).get::<String>().unwrap());
+                if is_folder {
+                    self_clone.add_note.as_ref().unwrap().set_visible(true);
+                    self_clone.add_folder.as_ref().unwrap().set_visible(true);
+                } else {
+                    self_clone.add_note.as_ref().unwrap().set_visible(false);
+                    self_clone.add_folder.as_ref().unwrap().set_visible(false);
+                }
             }
-
-            println!("gesture: {:?}", gesture);
-            println!("n_press: {:?}", n_press);
-            println!("x: {:?}", x);
-            println!("y: {:?}", y);
         });
-        tree.add_controller(&gesture);
 
-        let filter_model = TreeModelFilter::new(store, None);
+        let filter_model = TreeModelFilter::new(
+            <gtk::TreeStore as AsRef<gtk::TreeModel>>::as_ref(&self.tree_store.as_ref().unwrap()),
+            None,
+        );
         filter_model.set_visible_func(move |model, iter| {
             let title = model
                 .get_value(iter, 0)
@@ -93,76 +120,78 @@ impl TreeManager {
     }
 
     pub fn add_folder(
-        store: &TreeStore,
+        &self,
         name: &str,
-        parent: Option<&TreeIter>,
     ) -> TreeIter {
-        if let Some(p) = parent {
-            let child_count = store.iter_n_children(Some(p));
+        if let Some(p) = self.selected_iter {
+            let child_count = self.tree_store.as_ref().unwrap().iter_n_children(Some(&p));
 
             if child_count == 1 {
-                let child_iter = store.iter_nth_child(Some(p), 0).unwrap();
-                if store.get_value(&child_iter, 0).get::<String>().unwrap().as_str() == "" {
-                    store.remove(&child_iter);
+                let child_iter = self.tree_store.as_ref().unwrap().iter_nth_child(Some(&p), 0).unwrap();
+                if self.tree_store.as_ref().unwrap().get_value(&child_iter, 0).get::<String>().unwrap().as_str() == "" {
+                    self.tree_store.as_ref().unwrap().remove(&child_iter);
                 }
             }
         }
 
-        let iter = store.insert_with_values(parent, None, &[(0, &name), (1, &""), (2, &true)]);
-        store.insert_with_values(Some(&iter), None, &[(0, &""), (1, &""), (2, &true)]);
+        let iter = self.tree_store.as_ref().unwrap().insert_with_values(
+            match self.selected_iter {
+                Some(ref p) => Some(&p),
+                None => None,
+            }, None, &[(0, &name), (1, &""), (2, &true)]);
+        self.tree_store.as_ref().unwrap().insert_with_values(Some(&iter), None, &[(0, &""), (1, &""), (2, &true)]);
 
         iter
     }
 
-    pub fn remove_folder(store: &TreeStore, iter: &TreeIter) {
-        let parent_iter = store.iter_parent(iter);
+    pub fn remove_folder(self) {
+        let parent_iter = self.tree_store.as_ref().unwrap().iter_parent(&self.selected_iter.as_ref().unwrap());
 
         // Remove the folder
-        store.remove(iter);
+        self.tree_store.as_ref().unwrap().remove(&self.selected_iter.as_ref().unwrap());
 
         if let Some(parent) = parent_iter {
-            let child_count = store.iter_n_children(Some(&parent));
+            let child_count = self.tree_store.as_ref().unwrap().iter_n_children(Some(&parent));
 
             // If the parent has no children left, add a dummy item
             if child_count == 0 {
-                store.insert_with_values(Some(&parent), None, &[(0, &""), (1, &""), (2, &true)]);
+                self.tree_store.as_ref().unwrap().insert_with_values(Some(&parent), None, &[(0, &""), (1, &""), (2, &true)]);
             }
         }
     }
 
     pub fn add_note(
-        store: &TreeStore,
-        name: &str,
-        parent: Option<&TreeIter>,
+       &self,
+        name: &str
     ) -> TreeIter {
-        if let Some(p) = parent {
-            let child_count = store.iter_n_children(Some(p));
+        if let Some(p) = self.selected_iter.as_ref() {
+            let child_count = self.tree_store.as_ref().unwrap().iter_n_children(Some(&p));
 
             if child_count == 1 {
-                let child_iter = store.iter_nth_child(Some(p), 0).unwrap();
-                if store.get_value(&child_iter, 0).get::<String>().unwrap().as_str() == "" {
-                    store.remove(&child_iter);
+                let child_iter = self.tree_store.as_ref().unwrap().iter_nth_child(Some(&p), 0).unwrap();
+                if self.tree_store.as_ref().unwrap().get_value(&child_iter, 0).get::<String>().unwrap().as_str() == "" {
+                    self.tree_store.as_ref().unwrap().remove(&child_iter);
                 }
             }
         }
 
-        let iter = store.insert_with_values(parent, None, &[(0, &name), (1, &""), (2, &false)]);
+        let iter = self.tree_store.as_ref().unwrap().insert_with_values(Some(&self.selected_iter.as_ref().unwrap()), None, &[(0, &name), (1, &""), (2, &false)]);
 
         iter
     }
 
-    pub fn remove_note(store: &TreeStore, iter: &TreeIter) {
-        let parent_iter = store.iter_parent(iter);
+    pub fn remove_note(&self) {
+        let parent_iter = self.tree_store.as_ref().unwrap().iter_parent(&self.selected_iter.as_ref().unwrap());
 
         // Remove the note
-        store.remove(iter);
+        self.tree_store.as_ref().unwrap().remove(&self.selected_iter.as_ref().unwrap());
 
-        if let Some(parent) = parent_iter {
-            let child_count = store.iter_n_children(Some(&parent));
+        if let Some(p) = parent_iter {
+            let child_count = self.tree_store.as_ref().unwrap().iter_n_children(Some(&p));
 
             // If the parent has no children left, add a dummy item
             if child_count == 0 {
-                store.insert_with_values(Some(&parent), None, &[(0, &""), (1, &""), (2, &true)]);
+                self.tree_store.as_ref().unwrap().insert_with_values(Some(&p), None, &[(0, &""), (1, &""), (2, &true)]);
             }
         }
     }
@@ -260,6 +289,15 @@ impl TreeManager {
             for item in root_items {
                 insert_note_file_item(&store, item, None);
             }
+        }
+    }
+
+    pub fn set_selected_iter(&mut self, iter: Option<TreeIter>) {
+        match iter {
+            Some(i) => {
+                self.selected_iter = Some(i.clone());
+            }
+            None => {}
         }
     }
 }

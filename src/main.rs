@@ -42,10 +42,9 @@ fn main() {
         .expect("Unable to set the text domain encoding");
     textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
 
-    // Load resources
-    let resources = gio::Resource::load(PKGDATADIR.to_owned() + "/gnote.gresource")
-        .expect("Could not load resources");
-    gio::resources_register(&resources);
+    // Register and include resources
+    gio::resources_register_include!("gnote.gresource")
+        .expect("Failed to register resources.");
 
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and

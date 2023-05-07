@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=gnote
-Exec=gnote
-Icon=org.bil4x4.gnote
-Terminal=false
-Type=Application
-Categories=GTK;
-StartupNotify=true
