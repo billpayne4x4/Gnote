@@ -26,6 +26,8 @@ mod test_data;
 mod tree_manager;
 mod window;
 mod ui_tools;
+mod title_manager;
+mod note_manager;
 
 use self::application::GnoteApplication;
 use self::window::GnoteWindow;

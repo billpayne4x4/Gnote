@@ -4,65 +4,30 @@ use super::{
     io::{NoteFile, NoteFileItem},
 };
 use crate::log_error;
-use gtk::{self, gdk::{self, BUTTON_SECONDARY, EventType::ButtonPress}, gio::{Menu, MenuItem, SimpleAction}, Orientation, prelude::*, PositionType, TreeIter, TreeStore, TreeView, EventControllerLegacy, Button, Inhibit, PopoverMenu, TreeModelFilter, GestureClick, Application};
+use gtk::{self, gdk::{self, BUTTON_SECONDARY, EventType::ButtonPress}, gio::{Menu, MenuItem, SimpleAction}, Orientation, prelude::*, PositionType, TreeIter, TreeStore, TreeView, EventControllerLegacy, Button, Inhibit, PopoverMenu, TreeModelFilter, GestureClick, Application, Entry, TextBuffer};
 use gtk::gdk::Rectangle;
 use std::sync::{Arc, Mutex};
+use gtk::glib::clone;
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone)]
 pub struct TreeManager {
     tree_view: Option<TreeView>,
     tree_store: Option<TreeStore>,
+    title: Option<Entry>,
+    note_buffer: Option<TextBuffer>,
     add_note: Option<Button>,
     add_folder: Option<Button>,
     remove_item: Option<Button>,
     selected_iter: Option<TreeIter>,
 }
 
-impl Default for TreeManager {
-    fn default() -> Self {
-        TreeManager {
-            tree_view: None,
-            tree_store: None,
-            add_note: None,
-            add_folder: None,
-            remove_item: None,
-            selected_iter: None,
-        }
-    }
-}
-
-impl Default for &TreeManager {
-    fn default() -> Self {
-        &TreeManager {
-            tree_view: None,
-            tree_store: None,
-            add_note: None,
-            add_folder: None,
-            remove_item: None,
-            selected_iter: None,
-        }
-    }
-}
-
-impl Clone for TreeManager {
-    fn clone(&self) -> Self {
-        Self {
-            tree_view: self.tree_view.clone(),
-            tree_store: self.tree_store.clone(),
-            add_note: self.add_note.clone(),
-            add_folder: self.add_folder.clone(),
-            remove_item: self.remove_item.clone(),
-            selected_iter: self.selected_iter.clone(),
-        }
-    }
-}
-
-
 impl TreeManager {
-    pub fn new(tree_view: &TreeView, tree_store: &TreeStore, add_note: &Button, add_folder: &Button, remove_item: &Button) -> Self {
+    pub fn new(tree_view: &TreeView, tree_store: &TreeStore, title: &Entry, note_buffer: &TextBuffer,  add_note: &Button, add_folder: &Button, remove_item: &Button) -> Self {
         Self {
             tree_view: Some(tree_view.clone()),
             tree_store: Some(tree_store.clone()),
+            title: Some(title.clone()),
+            note_buffer: Some(note_buffer.clone()),
             add_note: Some(add_note.clone()),
             add_folder: Some(add_folder.clone()),
             remove_item: Some(remove_item.clone()),
@@ -71,9 +36,7 @@ impl TreeManager {
     }
 
     pub fn init(&self, application: &Application) {
-         let self_clone = self.clone();
-
-        self.tree_view.as_ref().unwrap().connect_row_activated(move |tree_view, path, column| {
+        self.tree_view.as_ref().unwrap().connect_row_activated(clone!(@strong self as self_clone => move |tree_view, path, column| {
             if let Some((model, iter)) = tree_view.selection().selected() {
                 let store = match model.downcast::<TreeStore>() {
                     Ok(store) => store,
@@ -100,8 +63,11 @@ impl TreeManager {
                     self_clone.add_note.as_ref().unwrap().set_visible(false);
                     self_clone.add_folder.as_ref().unwrap().set_visible(false);
                 }
+
+                self_clone.title.as_ref().unwrap().set_text(&store.get_value(&iter, 0).get::<String>().unwrap());
+                self_clone.note_buffer.as_ref().unwrap().set_text(&store.get_value(&iter, 1).get::<String>().unwrap());
             }
-        });
+        }));
 
         let filter_model = TreeModelFilter::new(
             <gtk::TreeStore as AsRef<gtk::TreeModel>>::as_ref(&self.tree_store.as_ref().unwrap()),

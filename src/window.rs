@@ -18,13 +18,16 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-use super::tree_manager::TreeManager;
 use adw::subclass::prelude::*;
 use gtk::prelude::*;
 use gtk::{gio, glib};
 use std::cell::{Ref, RefCell, RefMut};
+use crate::tree_manager::TreeManager;
+use crate::note_manager::NoteManager;
+use crate::title_manager::TitleManager;
 
 mod imp {
+    use crate::note_manager::NoteManager;
     use super::*;
 
     #[derive(Debug, Default, gtk::CompositeTemplate)]
@@ -49,6 +52,8 @@ mod imp {
         pub remove_item: TemplateChild<gtk::Button>,
 
         pub tree_manager: RefCell<TreeManager>,
+        pub note_manager: RefCell<NoteManager>,
+        pub title_manager: RefCell<TitleManager>,
     }
 
     #[glib::object_subclass]
@@ -70,8 +75,14 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            let tree_manager = TreeManager::new(&self.tree_view, &self.tree_store, &self.add_note, &self.add_folder, &self.remove_item);
+            let tree_manager = TreeManager::new(&self.tree_view, &self.tree_store, &self.title, &self.note_buffer, &self.add_note, &self.add_folder, &self.remove_item);
             self.tree_manager.replace(tree_manager);
+
+            let note_manager = NoteManager::new(&self.note, &self.note_buffer);
+            self.note_manager.replace(note_manager);
+
+            let title_manager = TitleManager::new(&self.title);
+            self.title_manager.replace(title_manager);
         }
     }
     impl WidgetImpl for GnoteWindow {}
@@ -89,11 +100,13 @@ impl GnoteWindow {
     pub fn new<P: glib::IsA<gtk::Application>>(application: &P) -> Self {
         let mut window: GnoteWindow = glib::Object::new(&[("application", application)]);
 
-        window.note_buffer().set_text("Hello World");
 
         {
             let tree = window.tree_view();
             let store = window.tree_store();
+
+            window.title_manager().init(&tree);
+            window.note_manager().init(&tree);
 
             let mut iter1: gtk::TreeIter;
             let mut iter2: gtk::TreeIter;
@@ -164,14 +177,32 @@ impl GnoteWindow {
     }
 
     pub fn tree_manager(&self) -> Ref<TreeManager> {
-        println!("tree_manager");
         let self_ = imp::GnoteWindow::from_instance(self);
         self_.tree_manager.borrow()
     }
 
     pub fn tree_manager_mut(&mut self) -> RefMut<TreeManager> {
-        println!("tree_manager");
         let mut self_ = imp::GnoteWindow::from_instance(self);
         self_.tree_manager.borrow_mut()
+    }
+
+    pub fn note_manager(&self) -> Ref<NoteManager> {
+        let self_ = imp::GnoteWindow::from_instance(self);
+        self_.note_manager.borrow()
+    }
+
+    pub fn note_manager_mut(&mut self) -> RefMut<NoteManager> {
+        let mut self_ = imp::GnoteWindow::from_instance(self);
+        self_.note_manager.borrow_mut()
+    }
+
+    pub fn title_manager(&self) -> Ref<TitleManager> {
+        let self_ = imp::GnoteWindow::from_instance(self);
+        self_.title_manager.borrow()
+    }
+
+    pub fn title_manager_mut(&mut self) -> RefMut<TitleManager> {
+        let mut self_ = imp::GnoteWindow::from_instance(self);
+        self_.title_manager.borrow_mut()
     }
 }

@@ -129,7 +129,6 @@
                     <child type="title">
                       <object class="AdwWindowTitle">
                         <property name="title">Gnote</property>
-                        <property name="subtitle">Current note title</property>
                       </object>
                     </child>
                     <child type="end">
