@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+    <requires lib="gtk" version="4.10"/>
+    <requires lib="libadwaita" version="1.1"/>
+    <template class="GnoteTreeView" parent="GtkTreeView">
+        <property name="headers-visible">False</property>
+        <property name="activate-on-single-click">True</property>
+        <property name="margin-bottom">5</property>
+        <property name="margin-end">5</property>
+        <property name="margin-start">5</property>
+        <property name="margin-top">5</property>
+        <property name="model">tree_store</property>
+        <property name="vexpand">True</property>
+        <property name="width-request">256</property>
+        <signal name="row-activated" handler="handle_row_activated"/>
+        <child>
+            <object class="GtkTreeViewColumn" id="test-column">
+                <property name="title">Test</property>
+                <child>
+                    <object class="GtkCellRendererText" id="test-renderer">
+                        <property name="ypad">10</property>
+                    </object>
+                    <attributes>
+                        <attribute name="text">0</attribute>
+                    </attributes>
+                </child>
+            </object>
+        </child>
+        <child internal-child="selection">
+            <object class="GtkTreeSelection" id="tree_selection">
+            </object>
+        </child>
+    </template>
+    <object class="GtkTreeStore" id="tree_store">
+        <columns>
+            <column type="gchararray"/>
+            <column type="gchararray"/>
+            <column type="gboolean"/>
+        </columns>
+    </object>
+</interface>

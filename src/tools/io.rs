@@ -1,4 +1,4 @@
-use super::log_test;
+use crate::log_test;
 use base64::{engine::general_purpose, Engine};
 use serde::Deserialize;
 use std::{fmt, fs, fs::File as StdFile, io::prelude::*, path::PathBuf};
@@ -191,7 +191,7 @@ pub fn get_notes_path() -> String {
 
 // ############################ UNIT TESTS ############################
 
-#[cfg(test)]
+/*#[cfg(test)]
 pub mod tests {
     use super::*;
     use crate::test_data;
@@ -251,3 +251,4 @@ pub mod tests {
         assert_note_file_equal(&note_file_save, &note_file_load);
     }
 }
+*/

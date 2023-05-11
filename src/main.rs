@@ -20,19 +20,14 @@
 
 mod application;
 mod config;
-mod io;
-mod logging;
-mod test_data;
-mod tree_manager;
-mod window;
-mod ui_tools;
-mod title_manager;
-mod note_manager;
+mod tests;
+mod tools;
+mod widgets;
 
 use self::application::GnoteApplication;
-use self::window::GnoteWindow;
+use self::widgets::window::GnoteWindow;
 
-use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
+use config::{GETTEXT_PACKAGE, LOCALEDIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::gio;
 use gtk::prelude::*;
@@ -45,8 +40,7 @@ fn main() {
     textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
 
     // Register and include resources
-    gio::resources_register_include!("gnote.gresource")
-        .expect("Failed to register resources.");
+    gio::resources_register_include!("gnote.gresource").expect("Failed to register resources.");
 
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and
