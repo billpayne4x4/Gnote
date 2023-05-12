@@ -1,4 +1,4 @@
-use crate::widgets::gnote_tree_view::GnoteTreeView;
+use crate::widgets::{gnote_editor::GnoteEditor, gnote_tree_view::GnoteTreeView};
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, prelude::*};
 
@@ -12,11 +12,7 @@ mod imp {
         #[template_child]
         pub gnote_tree_view: TemplateChild<GnoteTreeView>,
         #[template_child]
-        pub title: TemplateChild<gtk::Entry>,
-        #[template_child]
-        pub note: TemplateChild<gtk::TextView>,
-        #[template_child]
-        pub note_buffer: TemplateChild<gtk::TextBuffer>,
+        pub gnote_editor: TemplateChild<GnoteEditor>,
     }
 
     #[glib::object_subclass]

@@ -122,23 +122,7 @@
                   </object>
                 </child>
                 <child>
-                  <object class="GtkEntry" id="title">
-                    <property name="hexpand">True</property>
-                    <property name="margin-end">5</property>
-                    <property name="margin-start">5</property>
-                    <property name="margin-top">5</property>
-                    <property name="placeholder-text">Title!</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkTextView" id="note">
-                    <property name="buffer">note_buffer</property>
-                    <property name="hexpand">True</property>
-                    <property name="margin-bottom">5</property>
-                    <property name="margin-end">5</property>
-                    <property name="margin-start">5</property>
-                    <property name="margin-top">5</property>
-                    <property name="vexpand">True</property>
+                  <object class="GnoteEditor" id="gnote_editor">
                   </object>
                 </child>
               </object>
@@ -164,5 +148,4 @@
       </item>
     </section>
   </menu>
-  <object class="GtkTextBuffer" id="note_buffer"/>
 </interface>
